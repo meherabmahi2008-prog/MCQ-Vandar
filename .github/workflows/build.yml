@@ -1,0 +1,48 @@
+name: Build Android APK
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch: # মোবাইল থেকে এক ক্লিকে ম্যানুয়ালি APK বিল্ড করার জন্য
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # ১. রিপোজিটরি থেকে কোড নেওয়া
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # ২. জাভা পরিবেশ সেটআপ
+      - name: Set up Java JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      # ৩. ফ্লাটার পরিবেশ সেটআপ
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      # ৪. প্রজেক্টের প্যাকেজ ডাউনলোড
+      - name: Install Dependencies
+        run: flutter pub get
+
+      # ৫. অ্যান্ড্রয়েড APK তৈরি করা
+      - name: Build APK
+        run: flutter build apk --release --split-per-abi
+
+      # ৬. তৈরি হওয়া APK ডাউনলোডের জন্য আপলোড করা
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-apk
+          path: build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
