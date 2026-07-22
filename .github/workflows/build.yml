@@ -7,7 +7,7 @@ on:
   pull_request:
     branches:
       - main
-  workflow_dispatch: # মোবাইল থেকে এক ক্লিকে ম্যানুয়ালি APK বিল্ড করার জন্য
+  workflow_dispatch:
 
 jobs:
   build:
@@ -32,17 +32,21 @@ jobs:
           channel: 'stable'
           cache: true
 
-      # ৪. প্রজেক্টের প্যাকেজ ডাউনলোড
+      # ৪. মিসিং অ্যান্ড্রয়েড ফাইল ফোল্ডার অটো-জেনারেট করা (ফিক্স)
+      - name: Re-create Android Platform Files
+        run: flutter create . --platforms=android
+
+      # ৫. প্রজেক্টের প্যাকেজ ডাউনলোড
       - name: Install Dependencies
         run: flutter pub get
 
-      # ৫. অ্যান্ড্রয়েড APK তৈরি করা
+      # ৬. অ্যান্ড্রয়েড APK তৈরি করা
       - name: Build APK
-        run: flutter build apk --release --split-per-abi
+        run: flutter build apk --release
 
-      # ৬. তৈরি হওয়া APK ডাউনলোডের জন্য আপলোড করা
+      # ৭. তৈরি হওয়া APK ডাউনলোডের জন্য আপলোড করা
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: release-apk
-          path: build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+          name: mcq-vandar-release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
