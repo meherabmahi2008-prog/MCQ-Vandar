@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'admin_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // TODO: আপনার Supabase URL এবং Anon Key দিয়ে নিচের দুটি মান পরিবর্তন করুন
   await Supabase.initialize(
     url: 'https://bgdaecclrpupfhsfstso.supabase.co',
     anonKey: 'sb_publishable_galw0ZH6gArXlQJ-Weg9YQ_UdMGLxGy',
@@ -37,7 +37,7 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('MCQ Vandar App'),
+        title: const Text('MCQ Vandar'),
         centerTitle: true,
       ),
       body: Center(
@@ -53,11 +53,21 @@ class HomeScreen extends StatelessWidget {
                 style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 10),
-              const Text(
-                'ডাটাবেজ ও কানেকশন সফলভাবে সেটআপ করা হয়েছে।',
-                style: TextStyle(fontSize: 14, color: Colors.grey),
-                textAlign: TextAlign.center,
+              const SizedBox(height: 30),
+              ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const AdminPage()),
+                  );
+                },
+                icon: const Icon(Icons.admin_panel_settings),
+                label: const Text('অ্যাডমিন প্যানেল (প্রশ্ন ইনপুট)'),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                  backgroundColor: Colors.deepPurple,
+                  foregroundColor: Colors.white,
+                ),
               ),
             ],
           ),
