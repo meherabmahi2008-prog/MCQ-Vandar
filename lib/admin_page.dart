@@ -281,7 +281,7 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
                   child: const Text('বাতিল', style: TextStyle(color: Colors.white70)),
                 ),
                 ElevatedButton(
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.redDark),
+                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF8B0000)),
                   onPressed: () async {
                     try {
                       final updatedOptions = editOptionControllers.map((c) => c.text.trim()).toList();
@@ -415,7 +415,7 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
         backgroundColor: Colors.black,
         appBar: AppBar(
           title: const Text('অ্যাডমিন লগইন'),
-          backgroundColor: Colors.redDark,
+          backgroundColor: const Color(0xFF8B0000),
           foregroundColor: Colors.white,
         ),
         body: Center(
@@ -458,7 +458,7 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
       backgroundColor: const Color(0xFF121212),
       appBar: AppBar(
         title: const Text('অ্যাডমিন প্যানেল'),
-        backgroundColor: Colors.redDark,
+        backgroundColor: const Color(0xFF8B0000),
         foregroundColor: Colors.white,
         bottom: TabBar(
           controller: _tabController,
@@ -620,7 +620,7 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
             icon: const Icon(Icons.filter_alt),
             label: const Text('খুঁজুন / ফিল্টার করুন'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.redDark,
+              backgroundColor: const Color(0xFF8B0000),
               foregroundColor: Colors.white,
             ),
           ),
@@ -672,9 +672,4 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
       filled: true,
     );
   }
-}
-
-// কালার কাস্টমাইজেশন
-extension CustomColors on Colors {
-  static const Color redDark = Color(0xFF8B0000);
 }
