@@ -32,19 +32,24 @@ jobs:
           channel: 'stable'
           cache: true
 
-      # ৪. মিসিং অ্যান্ড্রয়েড ফাইল ফোল্ডার অটো-জেনারেট করা (ফিক্স)
+      # ৪. অ্যান্ড্রেয়েড প্লাটফর্ম ফাইল তৈরি
       - name: Re-create Android Platform Files
         run: flutter create . --platforms=android
 
-      # ৫. প্রজেক্টের প্যাকেজ ডাউনলোড
+      # 🌐 ৫. অ্যান্ড্রেয়েড অ্যাপে ইন্টারনেট পারমিশন যুক্ত করা (ফিক্স)
+      - name: Add Internet Permission to AndroidManifest
+        run: |
+          sed -i '/<application/i \    <uses-permission android:name="android.permission.INTERNET"/>' android/app/src/main/AndroidManifest.xml
+
+      # ৬. প্রজেক্টের প্যাকেজ ডাউনলোড
       - name: Install Dependencies
         run: flutter pub get
 
-      # ৬. অ্যান্ড্রয়েড APK তৈরি করা
+      # ৭. অ্যান্ড্রেয়েড APK তৈরি করা
       - name: Build APK
         run: flutter build apk --release
 
-      # ৭. তৈরি হওয়া APK ডাউনলোডের জন্য আপলোড করা
+      # ৮. তৈরি হওয়া APK ডাউনলোডের জন্য আপলোড করা
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
