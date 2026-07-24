@@ -36,15 +36,29 @@ jobs:
       - name: Install Dependencies
         run: flutter pub get
 
-      # ৫. অ্যান্ড্রেয়েড প্রজেক্ট ফাইল জেনারেট করা
-      - name: Re-create Android Files
-        run: flutter create . --platforms=android
+      # ৫. অ্যান্ড্রেয়েড প্রজেক্ট জেনারেট করা
+      - name: Re-create Android Platform
+        run: flutter create . --platforms=android --org com.example.mcqvandar
 
-      # ৬. সরাসরি রিলেস APK তৈরি
+      # 🌐 ৬. অ্যান্ড্রেয়েড পারমিশন সঠিকভাবে ফাইলটিতে অটো যুক্ত করা
+      - name: Inject Internet Permission
+        run: |
+          python3 -c "
+          path = 'android/app/src/main/AndroidManifest.xml'
+          with open(path, 'r') as f:
+              content = f.read()
+          if 'android.permission.INTERNET' not in content:
+              content = content.replace('<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\">', '<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\">\n    <uses-permission android:name=\"android.permission.INTERNET\"/>')
+              with open(path, 'w') as f:
+                  f.write(content)
+          print('Permission Injected Successfully!')
+          "
+
+      # ৭. রিলেস APK তৈরি করা
       - name: Build APK
         run: flutter build apk --release
 
-      # ৭. তৈরি হওয়া APK ডাউনলোডের জন্য আপলোড
+      # ৮. তৈরি হওয়া APK ডাউনলোডের জন্য আপলোড
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
