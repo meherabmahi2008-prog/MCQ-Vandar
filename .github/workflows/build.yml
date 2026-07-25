@@ -14,27 +14,55 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # ১. প্রজেক্টের কোড ডাউনলোড
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      # ২. জাভা সেটআপ
       - name: Set up Java JDK
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
 
+      # ৩. ফ্লাটার সেটআপ
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
           cache: true
 
+      # ৪. প্যাকেজ ইন্সটল
       - name: Install Dependencies
         run: flutter pub get
 
+      # 🔥 ৫. পুরোনো অমিল থাকা অ্যান্ড্রয়েড ফোল্ডার সম্পূর্ণ মুছে ফেলা
+      - name: Remove Old Android Folder
+        run: rm -rf android
+
+      # 🛠️ ৬. একদম নতুন Flutter v2 Embedding সহ অ্যান্ড্রয়েড প্রজেক্ট তৈরি
+      - name: Generate Fresh Android Project
+        run: flutter create . --platforms=android --org com.mcqvandar.app
+
+      # 🌐 ৭. ইন্টারনেট পারমিশন স্বয়ংক্রিয়ভাবে যোগ করা
+      - name: Inject Internet Permission
+        run: |
+          python3 -c "
+          path = 'android/app/src/main/AndroidManifest.xml'
+          with open(path, 'r') as f:
+              content = f.read()
+          if 'android.permission.INTERNET' not in content:
+              content = content.replace('<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\">', '<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\">\n    <uses-permission android:name=\"android.permission.INTERNET\"/>')
+              with open(path, 'w') as f:
+                  f.write(content)
+          print('Internet Permission Injected!')
+          "
+
+      # ৮. APK বিল্ড করা
       - name: Build APK
         run: flutter build apk --release
 
+      # ৯. APK আপলোড
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
