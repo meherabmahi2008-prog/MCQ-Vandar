@@ -9,7 +9,7 @@ class AdminPage extends StatefulWidget {
 }
 
 class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMixin {
-  // 🔒 নতুন অ্যাডমিন পাসওয়ার্ড
+  // 🔒 অ্যাডমিন পাসওয়ার্ড
   final String _appPassword = '#Hope001';
   final _passwordController = TextEditingController();
   bool _isLoggedIn = false;
@@ -41,8 +41,7 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
   List<Map<String, dynamic>> _searchResults = [];
   bool _isSearching = false;
 
-  // --- [মাল্টি-সিলেক্ট / বাল্ক ডিলিট এর জন্য] ---
-  bool _isSelectionMode = false;
+  // --- [৩. মাল্টিপল সিলেকশন ও বাল্ক ডিলিটের জন্য সেট] ---
   final Set<int> _selectedIds = {};
 
   @override
@@ -54,6 +53,19 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
   @override
   void dispose() {
     _tabController.dispose();
+    _passwordController.dispose();
+    _questionController.dispose();
+    for (var c in _optionControllers) {
+      c.dispose();
+    }
+    _explanationController.dispose();
+    _subjectController.dispose();
+    _boardController.dispose();
+    _yearController.dispose();
+    _searchController.dispose();
+    _filterSubjectController.dispose();
+    _filterBoardController.dispose();
+    _filterYearController.dispose();
     super.dispose();
   }
 
@@ -111,7 +123,7 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
             backgroundColor: Colors.green,
           ),
         );
-        _clearUploadForm(); // শুধুমাত্র প্রশ্ন, অপশন ও ব্যাখ্যা মুছে যাবে
+        _clearUploadForm();
       }
     } catch (e) {
       if (mounted) {
@@ -124,7 +136,6 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
     }
   }
 
-  // বিষয়, বোর্ড ও সাল মেমরিতে থাকবে; বাকিগুলো মুছে নতুন প্রশ্নের জন্য প্রস্তুত হবে
   void _clearUploadForm() {
     _questionController.clear();
     for (var c in _optionControllers) {
@@ -138,7 +149,6 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
   Future<void> _fetchQuestions() async {
     setState(() {
       _isSearching = true;
-      _isSelectionMode = false;
       _selectedIds.clear();
     });
 
@@ -177,16 +187,18 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
     }
   }
 
-  // --- [প্রশ্ন ডিলেট করার লজিক] ---
-  Future<void> _deleteQuestion(int id) async {
+  // --- [একক প্রশ্ন ডিলেট করার লজিক] ---
+  Future<void> _deleteQuestion(int id, {bool closeDetailsDialog = false}) async {
     try {
       await Supabase.instance.client.from('questions').delete().eq('id', id);
       if (mounted) {
-        Navigator.pop(context); // ডায়ালগ বন্ধ করা
+        if (closeDetailsDialog) {
+          Navigator.pop(context);
+        }
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('প্রশ্নটি মুছে ফেলা হয়েছে!'), backgroundColor: Colors.redAccent),
         );
-        _fetchQuestions(); // তালিকা রিফ্রেশ করা
+        _fetchQuestions();
       }
     } catch (e) {
       if (mounted) {
@@ -197,52 +209,16 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
     }
   }
 
-  // --- [সিলেকশন মোড চালু/বন্ধ করা] ---
-  void _toggleSelectionMode([int? startId]) {
-    setState(() {
-      _isSelectionMode = !_isSelectionMode;
-      _selectedIds.clear();
-      if (_isSelectionMode && startId != null) {
-        _selectedIds.add(startId);
-      }
-    });
-  }
-
-  void _toggleItemSelection(int id) {
-    setState(() {
-      if (_selectedIds.contains(id)) {
-        _selectedIds.remove(id);
-      } else {
-        _selectedIds.add(id);
-      }
-    });
-  }
-
-  void _selectAllResults() {
-    setState(() {
-      _selectedIds
-        ..clear()
-        ..addAll(_searchResults.map((q) => q['id'] as int));
-    });
-  }
-
-  void _deselectAllResults() {
-    setState(() => _selectedIds.clear());
-  }
-
-  // --- [সিলেক্ট করা একাধিক প্রশ্ন একসাথে ডিলিট করার লজিক] ---
+  // --- [একাধিক নির্বাচিত প্রশ্ন একসাথে ডিলেট করার লজিক] ---
   Future<void> _deleteSelectedQuestions() async {
     if (_selectedIds.isEmpty) return;
 
-    final confirmed = await showDialog<bool>(
+    final confirm = await showDialog<bool>(
       context: context,
       builder: (c) => AlertDialog(
         backgroundColor: const Color(0xFF2C2C2C),
         title: const Text('নিশ্চিত করুন', style: TextStyle(color: Colors.white)),
-        content: Text(
-          'আপনি কি নির্বাচিত ${_selectedIds.length}টি প্রশ্ন মুছে ফেলতে চান?',
-          style: const TextStyle(color: Colors.white70),
-        ),
+        content: Text('আপনি কি নির্বাচিত ${_selectedIds.length} টি প্রশ্ন মুছে ফেলতে চান?', style: const TextStyle(color: Colors.white70)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(c, false),
@@ -257,32 +233,22 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
       ),
     );
 
-    if (confirmed != true) return;
-
-    try {
-      await Supabase.instance.client
-          .from('questions')
-          .delete()
-          .inFilter('id', _selectedIds.toList());
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${_selectedIds.length}টি প্রশ্ন মুছে ফেলা হয়েছে!'),
-            backgroundColor: Colors.green,
-          ),
-        );
-        setState(() {
+    if (confirm == true) {
+      try {
+        await Supabase.instance.client.from('questions').delete().in_('id', _selectedIds.toList());
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('${_selectedIds.length} টি প্রশ্ন সফলভাবে মুছে ফেলা হয়েছে!'), backgroundColor: Colors.redAccent),
+          );
           _selectedIds.clear();
-          _isSelectionMode = false;
-        });
-        _fetchQuestions();
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('বাল্ক ডিলিটে সমস্যা: $e')),
-        );
+          _fetchQuestions();
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('ডিলিট করতে সমস্যা: $e')),
+          );
+        }
       }
     }
   }
@@ -399,7 +365,7 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(content: Text('আপডেট সফল হয়েছে!'), backgroundColor: Colors.green),
                         );
-                        _fetchQuestions(); // তালিকা আপডেট
+                        _fetchQuestions();
                       }
                     } catch (e) {
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -417,53 +383,13 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
     );
   }
 
-  // --- [প্রশ্নের ডিটেইলস পপআপ ডায়ালগ (এডিট ও ডিলিট বাটন সহ)] ---
+  // --- [প্রশ্নের ডিটেইলস পপআপ ডায়ালগ] ---
   void _showQuestionDetails(Map<String, dynamic> q) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF1E1E1E),
-        title: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text('ID: ${q['id']}', style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
-            Row(
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.edit, color: Colors.amber),
-                  onPressed: () => _showEditDialog(q),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.delete, color: Colors.redAccent),
-                  onPressed: () {
-                    showDialog(
-                      context: context,
-                      builder: (c) => AlertDialog(
-                        backgroundColor: const Color(0xFF2C2C2C),
-                        title: const Text('নিশ্চিত নিশ্চিত?', style: TextStyle(color: Colors.white)),
-                        content: const Text('আপনি কি এই প্রশ্নটি মুছে ফেলতে চান?', style: TextStyle(color: Colors.white70)),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(c),
-                            child: const Text('না'),
-                          ),
-                          ElevatedButton(
-                            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                            onPressed: () {
-                              Navigator.pop(c);
-                              _deleteQuestion(q['id']);
-                            },
-                            child: const Text('হ্যাঁ, ডিলিট করুন', style: TextStyle(color: Colors.white)),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-              ],
-            ),
-          ],
-        ),
+        title: Text('ID: ${q['id']}', style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
         content: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -496,10 +422,46 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
             ],
           ),
         ),
+        actionsOverflowButtonSpacing: 8,
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('বন্ধ করুন', style: TextStyle(color: Colors.white70)),
+          ),
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.amber[800]),
+            icon: const Icon(Icons.edit, size: 16, color: Colors.white),
+            label: const Text('পরিবর্তন করুন', style: TextStyle(color: Colors.white)),
+            onPressed: () => _showEditDialog(q),
+          ),
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+            icon: const Icon(Icons.delete, size: 16, color: Colors.white),
+            label: const Text('ডিলিট করুন', style: TextStyle(color: Colors.white)),
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (c) => AlertDialog(
+                  backgroundColor: const Color(0xFF2C2C2C),
+                  title: const Text('নিশ্চিত করুন', style: TextStyle(color: Colors.white)),
+                  content: const Text('আপনি কি এই প্রশ্নটি মুছে ফেলতে চান?', style: TextStyle(color: Colors.white70)),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(c),
+                      child: const Text('না', style: TextStyle(color: Colors.white70)),
+                    ),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                      onPressed: () {
+                        Navigator.pop(c);
+                        _deleteQuestion(q['id'], closeDetailsDialog: true);
+                      },
+                      child: const Text('হ্যাঁ, ডিলিট করুন', style: TextStyle(color: Colors.white)),
+                    ),
+                  ],
+                ),
+              );
+            },
           ),
         ],
       ),
@@ -580,7 +542,7 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
     );
   }
 
-  // --- [ট্যাব ১: লাল-কালো শেডে প্রশ্ন আপলোড UI] ---
+  // --- [ট্যাব ১: প্রশ্ন আপলোড UI] ---
   Widget _buildUploadTab() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
@@ -630,7 +592,6 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
             maxLines: 2,
           ),
           const SizedBox(height: 12),
-          // বিষয়, বোর্ড ও সাল (যা মেমরিতে থেকে যাবে)
           Row(
             children: [
               Expanded(
@@ -674,8 +635,10 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
     );
   }
 
-  // --- [ট্যাব ২: সার্চ, ফিল্টার, এডিট ও ডিলিট UI] ---
+  // --- [ট্যাব ২: সার্চ, ফিল্টার ও বাল্ক ডিলেট UI] ---
   Widget _buildSearchTab() {
+    final isAllSelected = _searchResults.isNotEmpty && _selectedIds.length == _searchResults.length;
+
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: Column(
@@ -722,51 +685,40 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
               foregroundColor: Colors.white,
             ),
           ),
-          const SizedBox(height: 8),
-          // --- [সিলেকশন মোড টুলবার: সবগুলো সিলেক্ট/ডিসিলেক্ট ও বাল্ক ডিলিট বাটন] ---
+          const Divider(height: 20, color: Colors.white24),
+
           if (_searchResults.isNotEmpty)
-            Row(
-              children: [
-                TextButton.icon(
-                  onPressed: () => _toggleSelectionMode(),
-                  icon: Icon(
-                    _isSelectionMode ? Icons.close : Icons.checklist,
-                    color: Colors.redAccent,
-                    size: 18,
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              color: const Color(0xFF1E1E1E),
+              child: Row(
+                children: [
+                  Checkbox(
+                    value: isAllSelected,
+                    activeColor: Colors.redAccent,
+                    onChanged: (bool? checked) {
+                      setState(() {
+                        if (checked == true) {
+                          _selectedIds.addAll(_searchResults.map((q) => q['id'] as int));
+                        } else {
+                          _selectedIds.clear();
+                        }
+                      });
+                    },
                   ),
-                  label: Text(
-                    _isSelectionMode ? 'সিলেকশন বাতিল' : 'একাধিক সিলেক্ট করুন',
-                    style: const TextStyle(color: Colors.redAccent),
-                  ),
-                ),
-                const Spacer(),
-                if (_isSelectionMode) ...[
-                  TextButton(
-                    onPressed: _selectedIds.length == _searchResults.length
-                        ? _deselectAllResults
-                        : _selectAllResults,
-                    child: Text(
-                      _selectedIds.length == _searchResults.length ? 'সব বাদ দিন' : 'সব সিলেক্ট',
-                      style: const TextStyle(color: Colors.white70),
+                  const Text('সব সিলেক্ট করুন', style: TextStyle(color: Colors.white)),
+                  const Spacer(),
+                  if (_selectedIds.isNotEmpty)
+                    ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+                      icon: const Icon(Icons.delete_sweep, size: 18, color: Colors.white),
+                      label: Text('ডিলিট (${_selectedIds.length})', style: const TextStyle(color: Colors.white)),
+                      onPressed: _deleteSelectedQuestions,
                     ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.delete_forever, color: Colors.redAccent),
-                    onPressed: _selectedIds.isEmpty ? null : _deleteSelectedQuestions,
-                    tooltip: 'নির্বাচিতগুলো ডিলিট করুন (${_selectedIds.length})',
-                  ),
                 ],
-              ],
-            ),
-          if (_isSelectionMode && _selectedIds.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 4.0),
-              child: Text(
-                '${_selectedIds.length}টি প্রশ্ন নির্বাচিত হয়েছে',
-                style: const TextStyle(color: Colors.white70, fontSize: 12),
               ),
             ),
-          const Divider(height: 12, color: Colors.white24),
+
           Expanded(
             child: _isSearching
                 ? const Center(child: CircularProgressIndicator(color: Colors.redAccent))
@@ -776,25 +728,26 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
                         itemCount: _searchResults.length,
                         itemBuilder: (context, index) {
                           final q = _searchResults[index];
-                          final id = q['id'] as int;
-                          final isSelected = _selectedIds.contains(id);
+                          final int qId = q['id'];
+                          final bool isSelected = _selectedIds.contains(qId);
+
                           return Card(
-                            color: isSelected ? const Color(0xFF3A1414) : const Color(0xFF1E1E1E),
+                            color: const Color(0xFF1E1E1E),
                             margin: const EdgeInsets.symmetric(vertical: 4),
-                            shape: isSelected
-                                ? RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(4),
-                                    side: const BorderSide(color: Colors.redAccent, width: 1),
-                                  )
-                                : null,
                             child: ListTile(
-                              leading: _isSelectionMode
-                                  ? Checkbox(
-                                      value: isSelected,
-                                      activeColor: Colors.redAccent,
-                                      onChanged: (_) => _toggleItemSelection(id),
-                                    )
-                                  : null,
+                              leading: Checkbox(
+                                value: isSelected,
+                                activeColor: Colors.redAccent,
+                                onChanged: (bool? checked) {
+                                  setState(() {
+                                    if (checked == true) {
+                                      _selectedIds.add(qId);
+                                    } else {
+                                      _selectedIds.remove(qId);
+                                    }
+                                  });
+                                },
+                              ),
                               title: Text(
                                 q['question_text'] ?? '',
                                 maxLines: 1,
@@ -805,21 +758,8 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
                                 'ID: ${q['id']} | বিষয়: ${q['subject'] ?? 'N/A'} | বোর্ড: ${q['board'] ?? 'N/A'} | সাল: ${q['year'] ?? 'N/A'}',
                                 style: const TextStyle(color: Colors.white54, fontSize: 12),
                               ),
-                              trailing: _isSelectionMode
-                                  ? null
-                                  : const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.redAccent),
-                              onTap: () {
-                                if (_isSelectionMode) {
-                                  _toggleItemSelection(id);
-                                } else {
-                                  _showQuestionDetails(q);
-                                }
-                              },
-                              onLongPress: () {
-                                if (!_isSelectionMode) {
-                                  _toggleSelectionMode(id);
-                                }
-                              },
+                              trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.redAccent),
+                              onTap: () => _showQuestionDetails(q),
                             ),
                           );
                         },
@@ -830,7 +770,6 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
     );
   }
 
-  // ইনপুট ফিল্ডের স্টাইল
   InputDecoration _inputDecoration(String label, {IconData? icon}) {
     return InputDecoration(
       labelText: label,
